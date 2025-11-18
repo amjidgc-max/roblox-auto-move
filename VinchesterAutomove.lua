@@ -14,7 +14,7 @@ local HASTE_MULTIPLIER = 2
 local TARGET_DISTANCE = 10
 
 -- STATE
-local autoMoveEnabled = true -- Toggle sadece görünüm için
+local autoMoveEnabled = true
 local hurryEnabled = false
 local countdown = BASE_INTERVAL
 local character
@@ -34,10 +34,26 @@ screenGui.Name = "AutoMoveUI"
 screenGui.ResetOnSpawn = false
 
 local panel = Instance.new("Frame", screenGui)
-panel.Size = UDim2.new(0, 240, 0, 110)
+panel.Size = UDim2.new(0, 300, 0, 120) -- genişletildi
 panel.Position = UDim2.new(0, 20, 0, 20)
-panel.BackgroundColor3 = Color3.fromRGB(35, 0, 50) -- koyu mor-siyah
+panel.BackgroundColor3 = Color3.fromRGB(35, 0, 50) -- mor-siyah
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0,12)
+
+-- KAPAT BUTONU
+local closeButton = Instance.new("TextButton", panel)
+closeButton.Size = UDim2.new(0, 24, 0, 24)
+closeButton.Position = UDim2.new(1, -28, 0, 4)
+closeButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+closeButton.TextColor3 = Color3.fromRGB(255,255,255)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 18
+closeButton.Text = "X"
+Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0,12)
+
+closeButton.MouseButton1Click:Connect(function()
+	menuClosed = true
+	screenGui:Destroy()
+end)
 
 local title = Instance.new("TextLabel", panel)
 title.Size = UDim2.new(1, -20, 0, 28)
@@ -51,8 +67,8 @@ title.TextXAlignment = Enum.TextXAlignment.Left
 
 local toggleButton = Instance.new("TextButton", panel)
 toggleButton.Size = UDim2.new(0.6, -12, 0, 36)
-toggleButton.Position = UDim2.new(0, 10, 0, 40)
-toggleButton.BackgroundColor3 = Color3.fromRGB(120, 0, 120) -- mor
+toggleButton.Position = UDim2.new(0, 10, 0, 50)
+toggleButton.BackgroundColor3 = Color3.fromRGB(120, 0, 120)
 toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 16
@@ -61,8 +77,8 @@ Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0,8)
 
 local hurryButton = Instance.new("TextButton", panel)
 hurryButton.Size = UDim2.new(0.35, -12, 0, 36)
-hurryButton.Position = UDim2.new(0.62, 10, 0, 40)
-hurryButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150) -- mor
+hurryButton.Position = UDim2.new(0.62, 10, 0, 50)
+hurryButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
 hurryButton.TextColor3 = Color3.fromRGB(255,255,255)
 hurryButton.Font = Enum.Font.GothamBold
 hurryButton.TextSize = 15
@@ -71,7 +87,7 @@ Instance.new("UICorner", hurryButton).CornerRadius = UDim.new(0,8)
 
 local countdownLabel = Instance.new("TextLabel", panel)
 countdownLabel.Size = UDim2.new(1, -20, 0, 24)
-countdownLabel.Position = UDim2.new(0,10,0,82)
+countdownLabel.Position = UDim2.new(0,10,0,90)
 countdownLabel.BackgroundTransparency = 1
 countdownLabel.Font = Enum.Font.Gotham
 countdownLabel.TextSize = 16
