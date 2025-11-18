@@ -1,8 +1,10 @@
--- LocalScript
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
+-- Auto Move Script (Vinchester Edition)
+-- Anti-AFK otomatik
+-- made by vinchester
 
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -11,138 +13,106 @@ local BASE_INTERVAL = 60
 local HASTE_MULTIPLIER = 2
 local TARGET_DISTANCE = 10
 
-local autoMoveEnabled = true
+-- STATE
+local autoMoveEnabled = true -- Toggle sadece görünüm için
 local hurryEnabled = false
 local countdown = BASE_INTERVAL
 local character
 local nextDirection = -1
+local menuClosed = false
 
--- Karakter yükleme
+-- CHARACTER
 local function onCharacterAdded(char)
 	character = char
 end
 player.CharacterAdded:Connect(onCharacterAdded)
-if player.Character then
-	onCharacterAdded(player.Character)
-end
+if player.Character then onCharacterAdded(player.Character) end
 
--- UI temizleme
-local old = playerGui:FindFirstChild("AutoMoveUI")
-if old then old:Destroy() end
-
--- ==== PANEL ====
-local screenGui = Instance.new("ScreenGui")
+-- UI
+local screenGui = Instance.new("ScreenGui", playerGui)
 screenGui.Name = "AutoMoveUI"
-screenGui.Parent = playerGui
 screenGui.ResetOnSpawn = false
 
-local panel = Instance.new("Frame")
-panel.Name = "Panel"
-panel.Size = UDim2.new(0.25,0,0.3,0) -- yarı boyut
-panel.Position = UDim2.new(0.5,0,0.5,0)
-panel.AnchorPoint = Vector2.new(0.5,0.5)
-panel.BackgroundColor3 = Color3.fromRGB(26, 29, 46)
-panel.BorderSizePixel = 0
-panel.Parent = screenGui
+local panel = Instance.new("Frame", screenGui)
+panel.Size = UDim2.new(0, 240, 0, 110)
+panel.Position = UDim2.new(0, 20, 0, 20)
+panel.BackgroundColor3 = Color3.fromRGB(35, 0, 50) -- koyu mor-siyah
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0,12)
 
-local panelCorner = Instance.new("UICorner")
-panelCorner.CornerRadius = UDim.new(0, 15)
-panelCorner.Parent = panel
-
-local listLayout = Instance.new("UIListLayout")
-listLayout.FillDirection = Enum.FillDirection.Vertical
-listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Padding = UDim.new(0,10)
-listLayout.Parent = panel
-
--- ==== BAŞLIK ====
-local title = Instance.new("TextLabel")
-title.Text = "Vinchester Auto Move"
-title.Font = Enum.Font.GothamBlack
-title.TextSize = 24
-title.TextColor3 = Color3.new(1,1,1)
+local title = Instance.new("TextLabel", panel)
+title.Size = UDim2.new(1, -20, 0, 28)
+title.Position = UDim2.new(0,10,0,8)
 title.BackgroundTransparency = 1
+title.Text = "Auto Move — vinchester"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(255,200,255)
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Size = UDim2.new(1,0,0,30)
-title.LayoutOrder = 1
-title.Parent = panel
 
--- ==== AUTO TOGGLE ====
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0.6,0,0,40)
-toggleButton.BackgroundColor3 = Color3.fromRGB(0,200,120)
-toggleButton.TextColor3 = Color3.new(1,1,1)
+local toggleButton = Instance.new("TextButton", panel)
+toggleButton.Size = UDim2.new(0.6, -12, 0, 36)
+toggleButton.Position = UDim2.new(0, 10, 0, 40)
+toggleButton.BackgroundColor3 = Color3.fromRGB(120, 0, 120) -- mor
+toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
 toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextSize = 18
+toggleButton.TextSize = 16
 toggleButton.Text = "Auto: ON"
-toggleButton.LayoutOrder = 2
-toggleButton.Parent = panel
+Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0,8)
 
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0,8)
-toggleCorner.Parent = toggleButton
+local hurryButton = Instance.new("TextButton", panel)
+hurryButton.Size = UDim2.new(0.35, -12, 0, 36)
+hurryButton.Position = UDim2.new(0.62, 10, 0, 40)
+hurryButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150) -- mor
+hurryButton.TextColor3 = Color3.fromRGB(255,255,255)
+hurryButton.Font = Enum.Font.GothamBold
+hurryButton.TextSize = 15
+hurryButton.Text = "FASTER TIMER"
+Instance.new("UICorner", hurryButton).CornerRadius = UDim.new(0,8)
+
+local countdownLabel = Instance.new("TextLabel", panel)
+countdownLabel.Size = UDim2.new(1, -20, 0, 24)
+countdownLabel.Position = UDim2.new(0,10,0,82)
+countdownLabel.BackgroundTransparency = 1
+countdownLabel.Font = Enum.Font.Gotham
+countdownLabel.TextSize = 16
+countdownLabel.TextColor3 = Color3.fromRGB(220,180,255)
+countdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- UI Helpers
+local function formatTime(s)
+	s = math.max(0, math.floor(s+0.5))
+	return string.format("%02d:%02d", math.floor(s/60), s%60)
+end
+
+local function updateUI()
+	if menuClosed then return end
+	countdownLabel.Position = countdownLabel.Position + UDim2.new(0,0,0,math.sin(tick()*5))
+	if hurryEnabled then
+		hurryButton.BackgroundColor3 = Color3.fromRGB(255,100,255)
+		hurryButton.Text = "FASTER: ON"
+	else
+		hurryButton.BackgroundColor3 = Color3.fromRGB(150,0,150)
+		hurryButton.Text = "FASTER TIMER"
+	end
+	countdownLabel.Text = "Next move in: "..formatTime(countdown)
+end
+
+-- Buttons
+hurryButton.MouseButton1Click:Connect(function()
+	hurryEnabled = not hurryEnabled
+	updateUI()
+end)
 
 toggleButton.MouseButton1Click:Connect(function()
 	autoMoveEnabled = not autoMoveEnabled
 	toggleButton.Text = autoMoveEnabled and "Auto: ON" or "Auto: OFF"
-	toggleButton.BackgroundColor3 = autoMoveEnabled and Color3.fromRGB(0,200,120) or Color3.fromRGB(60,130,255)
 end)
 
--- ==== GET FAST BUTTON ====
-local hurryButton = Instance.new("TextButton")
-hurryButton.Size = UDim2.new(0.35,0,0,40)
-hurryButton.BackgroundColor3 = Color3.fromRGB(220,60,60)
-hurryButton.TextColor3 = Color3.new(1,1,1)
-hurryButton.Font = Enum.Font.GothamBold
-hurryButton.TextSize = 16
-hurryButton.Text = "GET FAST"
-hurryButton.LayoutOrder = 3
-hurryButton.Parent = panel
-
-local hurryCorner = Instance.new("UICorner")
-hurryCorner.CornerRadius = UDim.new(0,8)
-hurryCorner.Parent = hurryButton
-
-hurryButton.MouseButton1Click:Connect(function()
-	hurryEnabled = not hurryEnabled
-	hurryButton.Text = hurryEnabled and "GET FASTER" or "GET FAST"
-	hurryButton.BackgroundColor3 = hurryEnabled and Color3.fromRGB(255,140,40) or Color3.fromRGB(220,60,60)
-end)
-
--- ==== COUNTDOWN ====
-local countdownLabel = Instance.new("TextLabel")
-countdownLabel.Size = UDim2.new(1,0,0,25)
-countdownLabel.BackgroundTransparency = 1
-countdownLabel.Font = Enum.Font.Gotham
-countdownLabel.TextSize = 16
-countdownLabel.TextColor3 = Color3.fromRGB(220,220,220)
-countdownLabel.Text = "Next move in: 00:00"
-countdownLabel.TextXAlignment = Enum.TextXAlignment.Left
-countdownLabel.LayoutOrder = 4
-countdownLabel.Parent = panel
-
-local function formatTime(s)
-	s = math.max(0, math.floor(s+0.5))
-	local mins = math.floor(s/60)
-	local secs = s%60
-	return string.format("%02d:%02d",mins,secs)
-end
-
-local function updateUI()
-	toggleButton.Text = autoMoveEnabled and "Auto: ON" or "Auto: OFF"
-	toggleButton.BackgroundColor3 = autoMoveEnabled and Color3.fromRGB(0,200,120) or Color3.fromRGB(60,130,255)
-	hurryButton.Text = hurryEnabled and "GET FASTER" or "GET FAST"
-	hurryButton.BackgroundColor3 = hurryEnabled and Color3.fromRGB(255,140,40) or Color3.fromRGB(220,60,60)
-	countdownLabel.Text = "Next move in: "..formatTime(countdown)
-end
-
--- ==== HAREKET ====
+-- Movement
 local function performWalk(directionSign)
-	if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then return end
-	local humanoid = character.Humanoid
+	if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Humanoid") then return end
 	local root = character.HumanoidRootPart
+	local humanoid = character.Humanoid
 
 	local targetPart = Instance.new("Part")
 	targetPart.Size = Vector3.new(1,1,1)
@@ -150,75 +120,24 @@ local function performWalk(directionSign)
 	targetPart.CanCollide = false
 	targetPart.Transparency = 0.5
 	targetPart.Color = Color3.fromRGB(0,100,255)
+	targetPart.CFrame = root.CFrame + root.CFrame.LookVector * TARGET_DISTANCE * directionSign
 	targetPart.Parent = workspace
-
-	local offset = root.CFrame.LookVector * (TARGET_DISTANCE * directionSign)
-	targetPart.CFrame = CFrame.new(root.Position + offset)
-	humanoid:MoveTo(targetPart.Position)
-
-	task.spawn(function()
-		for i=0.5,1,0.05 do
-			targetPart.Transparency = i
-			task.wait(0.05)
-		end
-	end)
 	Debris:AddItem(targetPart,3)
+
+	humanoid:MoveTo(targetPart.Position)
 end
 
--- ==== TIMER ====
+-- Timer Loop
 RunService.Heartbeat:Connect(function(delta)
-	if autoMoveEnabled then
-		local speed = hurryEnabled and HASTE_MULTIPLIER or 1
-		countdown -= delta*speed
-		if countdown <= 0 then
-			performWalk(nextDirection)
-			nextDirection = -nextDirection
-			countdown = BASE_INTERVAL
-		end
+	local speed = hurryEnabled and HASTE_MULTIPLIER or 1
+	countdown -= delta * speed
+	if countdown <= 0 then
+		performWalk(-nextDirection)
+		nextDirection = -nextDirection
+		countdown = BASE_INTERVAL
 	end
 	updateUI()
 end)
 
--- ==== SÜRÜKLEME ====
-local dragToggle = false
-local dragInput, mousePos, framePos
-
-local dragPoint = Instance.new("Frame")
-dragPoint.Size = UDim2.new(0,12,0,12)
-dragPoint.Position = UDim2.new(1,-15,0,5)
-dragPoint.AnchorPoint = Vector2.new(0.5,0.5)
-dragPoint.BackgroundColor3 = Color3.new(1,1,1)
-dragPoint.BorderSizePixel = 0
-dragPoint.Parent = panel
-local dragCorner = Instance.new("UICorner")
-dragCorner.CornerRadius = UDim.new(0,6)
-dragCorner.Parent = dragPoint
-
-dragPoint.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragToggle = true
-		mousePos = input.Position
-		framePos = panel.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragToggle = false
-			end
-		end)
-	end
-end)
-
-dragPoint.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		dragInput = input
-	end
-end)
-
-RunService.RenderStepped:Connect(function()
-	if dragToggle and dragInput then
-		local delta = dragInput.Position - mousePos
-		panel.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X,
-								   framePos.Y.Scale, framePos.Y.Offset + delta.Y)
-	end
-end)
-
 updateUI()
+-- made by vinchester
