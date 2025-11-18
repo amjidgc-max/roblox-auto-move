@@ -5,6 +5,7 @@
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -34,26 +35,10 @@ screenGui.Name = "AutoMoveUI"
 screenGui.ResetOnSpawn = false
 
 local panel = Instance.new("Frame", screenGui)
-panel.Size = UDim2.new(0, 300, 0, 120) -- genişletildi
-panel.Position = UDim2.new(0, 20, 0, 20)
-panel.BackgroundColor3 = Color3.fromRGB(35, 0, 50) -- mor-siyah
-Instance.new("UICorner", panel).CornerRadius = UDim.new(0,12)
-
--- KAPAT BUTONU
-local closeButton = Instance.new("TextButton", panel)
-closeButton.Size = UDim2.new(0, 24, 0, 24)
-closeButton.Position = UDim2.new(1, -28, 0, 4)
-closeButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-closeButton.TextColor3 = Color3.fromRGB(255,255,255)
-closeButton.Font = Enum.Font.GothamBold
-closeButton.TextSize = 18
-closeButton.Text = "X"
-Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0,12)
-
-closeButton.MouseButton1Click:Connect(function()
-	menuClosed = true
-	screenGui:Destroy()
-end)
+panel.Size = UDim2.new(0, 300, 0, 140)
+panel.Position = UDim2.new(0, 50, 0, 50)
+panel.BackgroundColor3 = Color3.fromRGB(28, 0, 40) -- mor-siyah
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
 
 local title = Instance.new("TextLabel", panel)
 title.Size = UDim2.new(1, -20, 0, 28)
@@ -62,37 +47,83 @@ title.BackgroundTransparency = 1
 title.Text = "Auto Move — vinchester"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.TextColor3 = Color3.fromRGB(255,200,255)
+title.TextColor3 = Color3.fromRGB(245,245,245)
 title.TextXAlignment = Enum.TextXAlignment.Left
 
+-- Toggle button
 local toggleButton = Instance.new("TextButton", panel)
 toggleButton.Size = UDim2.new(0.6, -12, 0, 36)
 toggleButton.Position = UDim2.new(0, 10, 0, 50)
-toggleButton.BackgroundColor3 = Color3.fromRGB(120, 0, 120)
+toggleButton.BackgroundColor3 = Color3.fromRGB(123, 65, 238)
 toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 16
 toggleButton.Text = "Auto: ON"
 Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0,8)
 
+-- Hurry / Faster button
 local hurryButton = Instance.new("TextButton", panel)
 hurryButton.Size = UDim2.new(0.35, -12, 0, 36)
 hurryButton.Position = UDim2.new(0.62, 10, 0, 50)
-hurryButton.BackgroundColor3 = Color3.fromRGB(150, 0, 150)
+hurryButton.BackgroundColor3 = Color3.fromRGB(180, 0, 200)
 hurryButton.TextColor3 = Color3.fromRGB(255,255,255)
 hurryButton.Font = Enum.Font.GothamBold
 hurryButton.TextSize = 15
-hurryButton.Text = "FASTER TIMER"
+hurryButton.Text = "Faster Timer"
 Instance.new("UICorner", hurryButton).CornerRadius = UDim.new(0,8)
 
+-- Countdown label
 local countdownLabel = Instance.new("TextLabel", panel)
 countdownLabel.Size = UDim2.new(1, -20, 0, 24)
-countdownLabel.Position = UDim2.new(0,10,0,90)
+countdownLabel.Position = UDim2.new(0,10,0,100)
 countdownLabel.BackgroundTransparency = 1
 countdownLabel.Font = Enum.Font.Gotham
 countdownLabel.TextSize = 16
-countdownLabel.TextColor3 = Color3.fromRGB(220,180,255)
+countdownLabel.TextColor3 = Color3.fromRGB(220,220,220)
 countdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Drag Handle (sağ üst köşe)
+local dragHandle = Instance.new("Frame", panel)
+dragHandle.Size = UDim2.new(0, 20, 0, 20)
+dragHandle.Position = UDim2.new(1, -25, 0, 5)
+dragHandle.BackgroundColor3 = Color3.fromRGB(255,255,255)
+dragHandle.Active = true
+dragHandle.AnchorPoint = Vector2.new(0,0)
+Instance.new("UICorner", dragHandle).CornerRadius = UDim.new(0,10)
+
+-- Dragging logic (fare ve dokunmatik)
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+	local delta = input.Position - dragStart
+	panel.Position = UDim2.new(0, startPos.X + delta.X, 0, startPos.Y + delta.Y)
+end
+
+dragHandle.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = Vector2.new(panel.Position.X.Offset, panel.Position.Y.Offset)
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+dragHandle.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		update(input)
+	end
+end)
 
 -- UI Helpers
 local function formatTime(s)
@@ -102,13 +133,12 @@ end
 
 local function updateUI()
 	if menuClosed then return end
+	-- countdown animasyon: sayıyı hafif yukarı-aşağı hareket ettir
 	countdownLabel.Position = countdownLabel.Position + UDim2.new(0,0,0,math.sin(tick()*5))
 	if hurryEnabled then
-		hurryButton.BackgroundColor3 = Color3.fromRGB(255,100,255)
-		hurryButton.Text = "FASTER: ON"
+		hurryButton.BackgroundColor3 = Color3.fromRGB(255,140,200)
 	else
-		hurryButton.BackgroundColor3 = Color3.fromRGB(150,0,150)
-		hurryButton.Text = "FASTER TIMER"
+		hurryButton.BackgroundColor3 = Color3.fromRGB(180,0,200)
 	end
 	countdownLabel.Text = "Next move in: "..formatTime(countdown)
 end
@@ -135,7 +165,7 @@ local function performWalk(directionSign)
 	targetPart.Anchored = true
 	targetPart.CanCollide = false
 	targetPart.Transparency = 0.5
-	targetPart.Color = Color3.fromRGB(0,100,255)
+	targetPart.Color = Color3.fromRGB(100,0,255)
 	targetPart.CFrame = root.CFrame + root.CFrame.LookVector * TARGET_DISTANCE * directionSign
 	targetPart.Parent = workspace
 	Debris:AddItem(targetPart,3)
